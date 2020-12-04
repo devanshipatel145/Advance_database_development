@@ -1,54 +1,34 @@
-import sqlite3
+import pico
 import random
 random.seed()
 
+db = dataset.connect("postgresql://todouser1:todopassword1@drdelozier-1880.postgres.pythonanywhere-services.com:11880/tododb")
+# db = dataset.connect("sqlite:///:memory:")
+
 def get_items():
-    connection = sqlite3.connect("todo.db")
-    cursor = connection.cursor()
-    cursor.execute("select * from todo")
-    result = cursor.fetchall()
-    cursor.close()
-    return result
+    items = list(db['todo'].all())
+    results = [(item['id'],item['task'],item['status']) for item in items]
+    return results
 
 def get_item(id):
-    connection = sqlite3.connect("todo.db")
-    cursor = connection.cursor()
-    cursor.execute("select * from todo where id=?",(id,))
-    result = cursor.fetchall()
-    cursor.close()
-    if len(result) == 0:
+    items = list(db['todo'].find(id=id))
+    if len(items) == 0:
         return None
-    return result[0]
-
-def update_status(id, value):
-    connection = sqlite3.connect("todo.db")
-    cursor = connection.cursor()
-    cursor.execute("update todo set status=? where id=?",(value, id))
-    connection.commit()
-    cursor.close()
+    results = [(item['id'],item['task'],item['status']) for item in items]
+    return results[0]
 
 def create_item(task, status):
-    connection = sqlite3.connect("todo.db")
-    cursor = connection.cursor()
-    cursor.execute("insert into todo (task, status) values (?,?)", (task, status))
-    id = cursor.lastrowid
-    connection.commit()
-    cursor.close()
+    id = db['todo'].insert(dict(task=task, status=status))
     return id
 
+def update_status(id, value):
+    db['todo'].update(dict(id=id, status=value), ['id'])
+
 def update_item(id, updated_task):
-    connection = sqlite3.connect("todo.db")
-    cursor = connection.cursor()
-    cursor.execute("update todo set task=? where id=?", (updated_task, id))
-    connection.commit()
-    cursor.close()
+    db['todo'].update(dict(id=id, task=updated_task), ['id'])
 
 def delete_item(id):
-    connection = sqlite3.connect("todo.db")
-    cursor = connection.cursor()
-    cursor.execute("delete from todo where id=?", (id,))
-    connection.commit()
-    cursor.close()
+    db['todo'].delete(id=id)
 
 def _random_text():
     random_text = str(random.randint(10000,20000))
@@ -59,6 +39,7 @@ def test_get_items():
     results = get_items()
     assert type(results) is list
     assert len(results) > 0
+    print(results)
     for item in results:
         assert type(item) is tuple
     id, task, status = results[0]
